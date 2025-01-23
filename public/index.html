@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hola desde Express</title>
+    <style>
+      /* Estilo para la lista de usuarios */
+      #user-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      /* Estilo para cada usuario */
+      .user {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+
+      /* Estilo para el título y lista de bootcamps de cada usuario */
+      .user h3 {
+        margin: 0;
+      }
+
+      .bootcamps {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .bootcamp {
+        background-color: #efefef;
+        padding: 5px 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>¡Hola! Bienvenido a la página de inicio</h1>
+    <p>Esta página está siendo servida desde el servidor Express.</p>
+
+    <h2>Usuarios y Bootcamps</h2>
+
+    <!-- Botón para mostrar u ocultar los datos -->
+    <button id="showDataBtn">Mostrar Usuarios y Bootcamps</button>
+
+    <!-- Contenedor donde se mostrarán los usuarios y sus bootcamps -->
+    <div id="user-list" style="display: none"></div>
+
+    <h3>Registrar un Usuario</h3>
+
+    <!-- Formulario para registrar un nuevo usuario -->
+    <form id="signupForm">
+      <label for="firstName">Nombre:</label>
+      <input type="text" id="firstName" required /><br /><br />
+
+      <label for="lastName">Apellido:</label>
+      <input type="text" id="lastName" required /><br /><br />
+
+      <label for="email">Email:</label>
+      <input type="email" id="email" required /><br /><br />
+
+      <label for="password">Contraseña:</label>
+      <input type="password" id="password" required /><br /><br />
+
+      <button type="submit">Registrar Usuario</button>
+    </form>
+
+    <h3>Respuesta del Servidor:</h3>
+    <div id="response"></div>
+
+    <script>
+      // Función para obtener y mostrar los datos de los usuarios
+      async function fetchUsers() {
+        try {
+          const response = await fetch("http://localhost:5150/all");
+          const data = await response.json();
+
+          // Obtener el contenedor donde se van a mostrar los datos
+          const userList = document.getElementById("user-list");
+
+          // Limpiar cualquier dato previo (en caso de que el usuario haya hecho clic varias veces)
+          userList.innerHTML = "";
+
+          // Iterar sobre los usuarios y agregar la información al contenedor
+          data.forEach((user) => {
+            // Crear un nuevo contenedor para cada usuario
+            const userElement = document.createElement("div");
+            userElement.classList.add("user");
+            userElement.innerHTML = `
+              <h3>${user.firstName} ${user.lastName}</h3>
+              <p>Email: ${user.email}</p>
+              <p>Fecha de creación: ${new Date(
+                user.createdAt
+              ).toLocaleDateString()}</p>
+              <h4>Bootcamps:</h4>
+              <div class="bootcamps">
+                ${user.bootcamps
+                  .map(
+                    (bootcamp) => `
+                  <div class="bootcamp">${bootcamp.title} (CUE: ${bootcamp.cue})</div>
+                `
+                  )
+                  .join("")}
+              </div>
+            `;
+            // Agregar el nuevo elemento al contenedor
+            userList.appendChild(userElement);
+          });
+
+          // Mostrar el contenedor de usuarios
+          userList.style.display = "block";
+        } catch (error) {
+          console.error("Error al obtener los datos:", error);
+        }
+      }
+
+      // Agregar evento al botón para que cuando se haga clic, se muestren los datos
+      const showDataBtn = document.getElementById("showDataBtn");
+      showDataBtn.addEventListener("click", function () {
+        // Verificar si el contenedor está visible o no
+        const userList = document.getElementById("user-list");
+        if (userList.style.display === "none") {
+          fetchUsers();
+        } else {
+          userList.style.display = "none";
+        }
+      });
+
+      // Función para registrar un usuario
+      async function registerUser(event) {
+        event.preventDefault(); // Prevenir que el formulario se envíe de manera tradicional
+
+        // Obtener los datos del formulario
+        const firstName = document.getElementById("firstName").value;
+        const lastName = document.getElementById("lastName").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        // Preparar el cuerpo de la solicitud
+        const userData = {
+          firstName,
+          lastName,
+          email,
+          password,
+        };
+
+        try {
+          // Enviar la solicitud POST
+          const response = await fetch("http://localhost:5150/api/signup", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(userData),
+          });
+
+          // Verificar si la respuesta es exitosa
+          if (!response.ok) {
+            throw new Error("Error al registrar el usuario");
+          }
+
+          // Obtener los datos de la respuesta
+          const responseData = await response.json();
+
+          // Mostrar la respuesta en pantalla
+          document.getElementById("response").innerHTML = `
+            <p><strong>Mensaje:</strong> ${responseData.message}</p>
+            <p><strong>ID:</strong> ${responseData.id}</p>
+            <p><strong>Nombre:</strong> ${responseData.firstName} ${
+            responseData.lastName
+          }</p>
+            <p><strong>Email:</strong> ${responseData.email}</p>
+            <p><strong>Contraseña (encriptada):</strong> ${
+              responseData.password
+            }</p>
+            <p><strong>Fecha de Creación:</strong> ${new Date(
+              responseData.createdAt
+            ).toLocaleString()}</p>
+            <p><strong>Fecha de Actualización:</strong> ${new Date(
+              responseData.updatedAt
+            ).toLocaleString()}</p>
+          `;
+        } catch (error) {
+          console.error("Error al registrar el usuario:", error);
+          document.getElementById("response").innerHTML = `
+            <p style="color: red;">Error al registrar el usuario. Intenta nuevamente.</p>
+          `;
+        }
+      }
+
+      // Agregar evento al formulario para que se registre el usuario
+      document
+        .getElementById("signupForm")
+        .addEventListener("submit", registerUser);
+    </script>
+  </body>
+</html>
